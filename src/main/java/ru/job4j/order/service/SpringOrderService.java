@@ -1,9 +1,9 @@
 package ru.job4j.order.service;
 
 import lombok.AllArgsConstructor;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import ru.job4j.order.model.*;
-import ru.job4j.order.repository.OrderDTORepository;
 import ru.job4j.order.repository.OrderRepository;
 
 import javax.transaction.*;
@@ -13,14 +13,16 @@ import java.util.*;
 @AllArgsConstructor
 public class SpringOrderService implements OrderService {
 
-    private final OrderRepository orderRepository;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    private final OrderDTORepository orderDTORepository;
+    private final OrderRepository orderRepository;
 
     @Override
     @Transactional
     public Order create(Order order) {
-        return orderRepository.save(order);
+        var savedOrder = orderRepository.save(order);
+        kafkaTemplate.send("job4j_orders", savedOrder);
+        return savedOrder;
     }
 
     @Override
@@ -45,8 +47,8 @@ public class SpringOrderService implements OrderService {
         return true;
     }
 
-    public Optional<OrderDTO> findById(int id) {
-        return orderDTORepository.findById(id);
+    public Optional<Order> findById(int id) {
+        return orderRepository.findById(id);
     }
 
     @Override
